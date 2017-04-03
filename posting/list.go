@@ -387,6 +387,9 @@ func (l *List) addMutation(ctx context.Context, t *taskp.DirectedEdge) (bool, er
 			t.ValueId = math.MaxUint64
 		}
 	}
+
+	// TODO(Ashwin): Handle DeleteAll here.
+
 	if t.ValueId == 0 {
 		err := x.Errorf("ValueId cannot be zero")
 		x.TraceError(ctx, err)
@@ -681,6 +684,21 @@ func (l *List) valueFor(langs []string) (rval types.Val, rerr error) {
 	}
 
 	return rval, nil
+}
+
+func (l *List) findAllValues() (found bool, rval []types.Val) {
+	l.iterate(0, func(p *typesp.Posting) bool {
+		var v types.Val
+		val := make([]byte, len(p.Value))
+		copy(val, p.Value)
+		v.Value = val
+		v.Tid = types.TypeID(p.ValType)
+		rval = append(rval, v)
+		found = true
+		return true
+	})
+
+	return found, rval
 }
 
 func (l *List) findValue(uid uint64) (found bool, rval types.Val) {

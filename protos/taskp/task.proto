@@ -101,9 +101,10 @@ message DirectedEdge {
 	enum Op {
 		SET = 0;
 		DEL = 1;
+		DEL_ALL = 2;
 	}
 	Op op = 8;
-	repeated facetsp.Facet facets = 9;
+	repeated facetsp.Facet facets = 9;	
 }
 
 message Mutations {

@@ -167,22 +167,27 @@ func (l *List) AddMutationWithIndex(ctx context.Context, t *taskp.DirectedEdge) 
 		"[%s] [%d] [%v] %d %d\n", t.Attr, t.Entity, t.Value, t.ValueId, t.Op)
 
 	var val types.Val
+	var vals []types.Val
 	var found bool
 
 	l.index.Lock()
 	defer l.index.Unlock()
 
-	doUpdateIndex := pstore != nil && (t.Value != nil) && schema.State().IsIndexed(t.Attr)
+	doUpdateIndex := pstore != nil && (t.Value != nil || t.Op == taskp.DirectedEdge_DEL_ALL) && schema.State().IsIndexed(t.Attr)
 	{
 		l.Lock()
 		if doUpdateIndex {
 			// Check original value BEFORE any mutation actually happens.
 			if len(t.Lang) > 0 {
 				found, val = l.findValue(farm.Fingerprint64([]byte(t.Lang)))
-			} else {
+			} else if t.Op != taskp.DirectedEdge_DEL_ALL {
 				found, val = l.findValue(math.MaxUint64)
+			} else {
+				found, vals = l.findAllValues()
 			}
 		}
+
+		// TODO(Ashwin): Handle deleteall here.
 		_, err := l.addMutation(ctx, t)
 		l.Unlock()
 
@@ -203,6 +208,13 @@ func (l *List) AddMutationWithIndex(ctx context.Context, t *taskp.DirectedEdge) 
 				Value: t.Value,
 			}
 			addIndexMutations(ctx, t, p, taskp.DirectedEdge_SET)
+		}
+
+		if t.Op == taskp.DirectedEdge_DEL_ALL {
+			// Iterate through all the values and delete.
+			for _, val := range vals {
+				addIndexMutations(ctx, t, val, taskp.DirectedEdge_DEL)
+			}
 		}
 	}
 	// Add reverse mutation irrespective of hashMutated, server crash can happen after

@@ -19,6 +19,7 @@ message NQuad {
     string lang = 7;
     sint32 objectType = 6;
     repeated facetsp.Facet facets = 8;
+		bool delete_all = 9;
 }
 
 message Value {
